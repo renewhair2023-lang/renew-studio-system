@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RENEW STUDIO PRO (v2.1)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --bg-color: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --text-main: #333333;
+            --text-sub: #8E8E93;
+            --accent: #1A1A1A;
+            --border: #E5E5EA;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            --green: #34C759;
+            --red: #FF3B30;
+            --warning: #FF9500;
+        }
+
+        body {
+            font-family: -apple-system, "Helvetica Neue", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .hidden { display: none !important; }
+
+        /* 標題 */
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #D1D1D6;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .status-dot.online { background-color: var(--green); }
+
+        /* 卡片樣式 */
+        .card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            border-radius: 20px;
+            padding: 30px 25px;
+            box-shadow: var(--shadow);
+            border: 1px solid #F2F2F7;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        /* 主畫面元件 */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        select, .edit-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            color: var(--text-main);
+            background: #F9F9F9;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            outline: none;
+            text-align: center;
+            font-weight: 500;
+            -webkit-appearance: none;
+            box-sizing: border-box;
+        }
+
+        .display-zone { text-align: center; margin-bottom: 30px; }
+        .info-tag {
+            display: inline-block;
+            font-size: 12px;
+            color: var(--text-sub);
+            background: #F2F2F7;
+            padding: 6px 16px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        .now-name {
+            font-size: 48px;
+            font-weight: 300;
+            color: var(--text-main);
+            margin: 10px 0 30px 0;
+            letter-spacing: -1px;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 15px;
+        }
+
+        button {
+            border: none;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-confirm { background-color: var(--accent); color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        .btn-skip { background-color: #F2F2F7; color: var(--text-sub); }
+        .btn-danger { background-color: #FFF0F0; color: var(--red); }
+
+        /* 列表區 */
+        .list-zone {
+            margin-top: 30px;
+            border-top: 1px solid #F2F2F7;
+            padding-top: 20px;
+        }
+        .list-header {
+            font-size: 12px;
+            color: #C7C7CC;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .edit-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid #E5E5EA;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #FAFAFA;
+        }
+        .rank-num {
+            width: 24px;
+            height: 24px;
+            background: #F2F2F7;
+            color: #8E8E93;
+            border-radius: 50%;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        .designer { font-size: 15px; color: var(--text-main); flex: 1; }
+
+        /* 編輯佇列元件 */
+        .edit-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #F9F9F9;
+            margin-bottom: 8px;
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+        .edit-controls button {
+            background: white;
+            border: 1px solid #E5E5EA;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            margin-left: 5px;
+            cursor: pointer;
+            color: var(--text-sub);
+            padding: 0;
+        }
+
+        /* 數據報表元件 */
+        .view-switch {
+            display: flex;
+            margin-bottom: 15px;
+            background: #F2F2F7;
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .view-switch-btn {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            border-radius: 10px;
+            cursor: pointer;
+            color: var(--text-sub);
+        }
+        .view-switch-btn.active {
+            background: white;
+            color: var(--text-main);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            font-weight: 600;
+        }
+
+        /* 統計表格 */
+        .stats-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .stats-table th { text-align: left; color: var(--text-sub); font-weight: normal; padding-bottom: 10px; font-size: 12px; }
+        .stats-table td { padding: 10px 0; border-bottom: 1px solid #FAFAFA; }
+        .badge { 
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            font-size: 12px; 
+            font-weight: 600;
+            min-width: 20px;
+            display: inline-block;
+            text-align: center;
+        }
+        .badge.book { background: #E8F5E9; color: var(--green); }
+        .badge.skip { background: #FFEBEE; color: var(--red); }
+
+        /* 詳細紀錄列表 */
+        .log-list { list-style: none; padding: 0; margin: 0; }
+        .log-row {
+            padding: 12px 0;
+            border-bottom: 1px solid #FAFAFA;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .log-time { color: var(--text-sub); font-size: 12px; display: block; margin-bottom: 2px;}
+        .log-name { font-weight: 500; }
+        .log-action { font-size: 12px; font-weight: 600; text-transform: uppercase; margin-right: 10px; }
+        
+        .log-edit-btn {
+            background: none;
+            border: 1px solid #E5E5EA;
+            color: var(--text-sub);
+            width: 28px; 
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-size: 14px;
+        }
+        .log-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* 底部按鈕區 */
+        .footer-container {
+            margin-top: 40px;
+            flex-shrink: 0;
+            padding-bottom: 20px;
+        }
+        .footer-buttons { 
+            text-align: center; 
+            display: flex; 
+            justify-content: center; 
+            gap: 15px; 
+            margin-bottom: 20px; 
+        }
+        .footer-btn {
+            background: none;
+            border: 1px solid #E5E5EA;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: #C7C7CC;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+        }
+        .footer-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        .producer-text {
+            text-align: center;
+            font-size: 10px;
+            color: #E5E5EA;
+            font-family: sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            width: 80%;
+            max-width: 320px;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+        .modal-desc { color: #8E8E93; margin-bottom: 20px; font-size: 14px; line-height: 1.5; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-actions button { flex: 1; padding: 12px; font-size: 14px; border-radius: 10px; }
+        .modal-btn-cancel { background: #F2F2F7; color: var(--text-main); }
+        
+        .warning-box {
+            background: #FFF0F0;
+            color: var(--red);
+            font-size: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div id="statusDot" class="status-dot"></div>
+    <span>RENEW STUDIO</span>
+</div>
+
+<div class="card" id="view-main">
+    <div class="controls">
+        <select id="gender" onchange="handleSelectChange()">
+            <option value="female">Woman 女生</option>
+            <option value="male">Man 男生</option>
+        </select>
+        <select id="service" onchange="handleSelectChange()">
+            <option value="wash">Shampoo 洗髮</option>
+            <option value="perm">Perm 燙髮</option>
+            <option value="dye">Color 染髮</option>
+            <option value="care">Treatment 護髮</option>
+        </select>
+    </div>
+
+    <div class="display-zone">
+        <div class="info-tag" id="currentTag">LOADING...</div>
+        <div class="now-name" id="activeName">---</div>
+        <div class="btn-group">
+            <button class="btn-confirm" onclick="triggerConfirm('BOOK')">Confirm 預約</button>
+            <button class="btn-skip" onclick="triggerConfirm('SKIP')">Skip 跳過</button>
+        </div>
+    </div>
+
+    <div class="list-zone">
+        <div class="list-header">
+            <span>WAITING LIST</span>
+            <a class="edit-link" onclick="openEditQueue()">✎ Edit 調整順序</a>
+        </div>
+        <div id="queueList"></div>
+    </div>
+</div>
+
+<div class="card hidden" id="view-edit">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">Manage Queue</h3>
+        <a class="edit-link" onclick="switchView('main')">Done 完成</a>
+    </div>
+    <div class="info-tag" id="editTag" style="display:block; text-align:center;">---</div>
+    <div id="edit-list-container" style="max-height: 300px; overflow-y: auto;"></div>
+    <div style="display:flex; gap:10px; margin-top:20px; border-top:1px solid #F2F2F7; padding-top:20px;">
+        <input type="text" id="new-designer-name" placeholder="Name" style="flex:1; padding:10px; border:1px solid #E5E5EA; border-radius:10px; outline:none;">
+        <button class="btn-confirm" style="width:auto; padding:0 20px;" onclick="addDesignerToQueue()">Add</button>
+    </div>
+</div>
+
+<div class="card hidden" id="view-stats">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">數據報表中心</h3>
+        <a class="edit-link" onclick="switchView('main')">關閉</a>
+    </div>
+
+    <div class="view-switch">
+        <div class="view-switch-btn active" id="tab-counts" onclick="switchStatsMode('counts')">📊 次數統計</div>
+        <div class="view-switch-btn" id="tab-logs" onclick="switchStatsMode('logs')">🕒 詳細紀錄</div>
+    </div>
+
+    <div id="panel-counts">
+        <div class="view-switch" style="background:transparent; margin-bottom:10px;">
+            <span class="edit-link" onclick="setFilter('day')" id="filter-day" style="margin-right:5px;">今日</span>
+            <span class="edit-link" onclick="setFilter('month')" id="filter-month" style="margin-right:5px; color:#C7C7CC; border-color:transparent;">本月</span>
+            <span class="edit-link" onclick="setFilter('year')" id="filter-year" style="color:#C7C7CC; border-color:transparent;">本年</span>
+        </div>
+        <div style="overflow-y:auto; max-height:400px;">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>設計師</th>
+                        <th style="text-align:center;">預約</th>
+                        <th style="text-align:center;">跳過</th>
+                        <th width="40"></th> </tr>
+                </thead>
+                <tbody id="stats-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="panel-logs" class="hidden">
+        <div style="margin-bottom:10px; font-size:12px; color:var(--text-sub); text-align:center;">
+            僅管理者可編輯數據 (點擊 ✎)
+        </div>
+        <div style="overflow-y:auto; max-height:380px;">
+            <ul class="log-list" id="log-list-body">
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="card hidden" id="view-settings">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">System Reset</h3>
+        <a class="edit-link" onclick="switchView('main')">Cancel</a>
+    </div>
+    <div style="margin-bottom:10px; font-weight:bold;">Woman List</div>
+    <div id="input-container-female"></div>
+    <button class="edit-link" style="width:100%; margin-bottom:20px; text-align:center;" onclick="addInput('female')">+ Add Field</button>
+    <div style="margin-bottom:10px; font-weight:bold;">Man List</div>
+    <div id="input-container-male"></div>
+    <button class="edit-link" style="width:100%; margin-bottom:20px; text-align:center;" onclick="addInput('male')">+ Add Field</button>
+    <button class="btn-confirm" style="width:100%;" onclick="saveAndReset()">Confirm Reset</button>
+</div>
+
+<div class="footer-container">
+    <div class="footer-buttons">
+        <button class="footer-btn" onclick="openStatsPanel()">📊 查看報表</button>
+        <button class="footer-btn" onclick="openAdminPanel()">⚙️ 系統設定</button>
+    </div>
+    <div class="producer-text">Produced by Tuu</div>
+</div>
+
+<div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-title" id="modal-title">Confirm</div>
+        <p class="modal-desc" id="modal-desc">Are you sure?</p>
+        <div class="modal-actions">
+            <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-confirm" id="modal-btn-ok" onclick="executeAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="edit-log-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-title">修正單筆紀錄</div>
+        <div style="margin-bottom:15px; text-align:left;">
+            <label style="font-size:12px; color:#8E8E93;">設計師名稱</label>
+            <input type="text" id="edit-log-name" class="edit-input" style="margin-top:5px;">
+        </div>
+        <div style="margin-bottom:15px; text-align:left;">
+            <label style="font-size:12px; color:#8E8E93;">動作類型</label>
+            <select id="edit-log-action" style="margin-top:5px;">
+                <option value="BOOK">預約 (Book)</option>
+                <option value="SKIP">跳過 (Skip)</option>
+            </select>
+        </div>
+        
+        <div class="warning-box">
+            ⚠️ <b>系統警告</b><br>
+            您正在手動修改歷史數據。<br>此操作將被記錄。
+        </div>
+
+        <div class="modal-actions">
+            <button class="modal-btn-cancel" onclick="closeEditLogModal()">取消</button>
+            <button class="btn-confirm" onclick="saveLogEdit()" style="background-color:var(--warning);">確認修正</button>
+        </div>
+    </div>
+</div>
+
+<div id="edit-stats-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-title">調整統計數值</div>
+        <div style="margin-bottom:20px; font-size:16px; font-weight:bold;" id="edit-stats-name">---</div>
+        
+        <div style="margin-bottom:15px; text-align:left;">
+            <label style="font-size:12px; color:#8E8E93;">預約次數 (Book)</label>
+            <input type="number" id="edit-stats-book" class="edit-input" style="margin-top:5px;">
+        </div>
+        <div style="margin-bottom:15px; text-align:left;">
+            <label style="font-size:12px; color:#8E8E93;">跳過次數 (Skip)</label>
+            <input type="number" id="edit-stats-skip" class="edit-input" style="margin-top:5px;">
+        </div>
+
+        <div class="warning-box">
+            ⚠️ <b>注意</b><br>
+            系統將自動<b>新增</b>或<b>刪除</b>最新的紀錄<br>以符合您輸入的數值。
+        </div>
+
+        <div class="modal-actions">
+            <button class="modal-btn-cancel" onclick="closeStatsEditModal()">取消</button>
+            <button class="btn-confirm" onclick="saveStatsEdit()" style="background-color:var(--warning);">儲存變更</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDiqyYQpNSyK9ipRAxaAk2MtaEfO5F0UoQ",
+        authDomain: "renew-hair-28468.firebaseapp.com",
+        databaseURL: "https://renew-hair-28468-default-rtdb.firebaseio.com",
+        projectId: "renew-hair-28468",
+        storageBucket: "renew-hair-28468.firebasestorage.app",
+        messagingSenderId: "1017732398158",
+        appId: "1:1017732398158:web:865f4f9ad0acb50e5dd71f",
+        measurementId: "G-RLRCCPSG2D"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    let remoteData = null;
+    let statsData = null;
+    let pendingAction = null;
+    let currentStatsPeriod = 'day';
+    
+    // 權限狀態
+    let isAdminVerified = false;
+    let currentEditKey = null;
+
+    // 統計編輯暫存
+    let currentEditStatsName = null;
+    let currentEditStatsOldBook = 0;
+    let currentEditStatsOldSkip = 0;
+
+    function init() {
+        const lastG = localStorage.getItem('renew_gender');
+        const lastS = localStorage.getItem('renew_service');
+        if(lastG) document.getElementById('gender').value = lastG;
+        if(lastS) document.getElementById('service').value = lastS;
+    }
+
+    db.ref('.info/connected').on('value', snap => {
+        const dot = document.getElementById('statusDot');
+        if(snap.val()) dot.classList.add('online');
+        else dot.classList.remove('online');
+    });
+
+    db.ref('queues').on('value', snapshot => {
+        remoteData = snapshot.val();
+        renderMain();
+        if(!document.getElementById('view-edit').classList.contains('hidden')) renderEditList();
+    });
+
+    db.ref('history').on('value', snapshot => {
+        statsData = snapshot.val();
+        if(!document.getElementById('view-stats').classList.contains('hidden')) renderStats();
+    });
+
+    function handleSelectChange() {
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        localStorage.setItem('renew_gender', g);
+        localStorage.setItem('renew_service', s);
+        renderMain();
+    }
+
+    function renderMain() {
+        if(!remoteData) return;
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        if(!remoteData[g] || !remoteData[g][s]) return;
+
+        const queue = remoteData[g][s];
+        const gText = g === 'female' ? 'WOMAN' : 'MAN';
+        const sText = document.getElementById('service').selectedOptions[0].text.split(' ')[0].toUpperCase();
+        document.getElementById('currentTag').innerText = `${gText} / ${sText}`;
+        
+        document.getElementById('activeName').innerText = queue.length > 0 ? queue[0] : "---";
+        const listEl = document.getElementById('queueList');
+        if(queue.length <= 1) {
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#ccc;">No one in waiting list</div>';
+        } else {
+            listEl.innerHTML = queue.slice(1).map((name, i) => `
+                <div class="list-item"><span class="rank-num">${i + 1}</span><span class="designer">${name}</span></div>
+            `).join('');
+        }
+    }
+
+    function triggerConfirm(type) {
+        if(!remoteData) return;
+        pendingAction = type;
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        const queue = remoteData[g][s];
+        if(!queue || queue.length === 0) return;
+        const currentName = queue[0];
+        
+        document.getElementById('modal-title').innerText = type === 'BOOK' ? "確認預約" : "確認跳過";
+        document.getElementById('modal-desc').innerHTML = `對象：<b>${currentName}</b>`;
+        const btn = document.getElementById('modal-btn-ok');
+        btn.style.backgroundColor = type === 'BOOK' ? "var(--accent)" : "#F2F2F7";
+        btn.style.color = type === 'BOOK' ? "white" : "var(--text-sub)";
+        btn.innerText = "確認";
+        document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('confirm-modal').classList.add('hidden');
+        pendingAction = null;
+    }
+
+    function executeAction() {
+        if(!pendingAction) return;
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        let queue = [...remoteData[g][s]];
+        const person = queue.shift();
+        queue.push(person);
+        db.ref(`queues/${g}/${s}`).set(queue);
+        
+        const timestamp = Date.now();
+        db.ref(`history/${timestamp}`).set({
+            name: person, action: pendingAction, gender: g, service: s, date: new Date().toISOString()
+        });
+        closeModal();
+    }
+
+    function openEditQueue() {
+        if(!remoteData) return;
+        switchView('edit');
+        renderEditList();
+    }
+
+    function renderEditList() {
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        const gText = g === 'female' ? 'WOMAN' : 'MAN';
+        const sText = document.getElementById('service').selectedOptions[0].text.split(' ')[0].toUpperCase();
+        document.getElementById('editTag').innerText = `Editing: ${gText} / ${sText}`;
+        const queue = remoteData[g][s] || [];
+        const container = document.getElementById('edit-list-container');
+        container.innerHTML = queue.map((name, i) => `
+            <div class="edit-item">
+                <span style="font-weight:500;">${i+1}. ${name}</span>
+                <div class="edit-controls">
+                    <button onclick="moveQueueItem(${i}, -1)">▲</button>
+                    <button onclick="moveQueueItem(${i}, 1)">▼</button>
+                    <button onclick="removeQueueItem(${i})" style="color:var(--red);">✕</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function moveQueueItem(index, direction) {
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        let queue = [...remoteData[g][s]];
+        if ((direction === -1 && index > 0) || (direction === 1 && index < queue.length - 1)) {
+            [queue[index], queue[index + direction]] = [queue[index + direction], queue[index]];
+            db.ref(`queues/${g}/${s}`).set(queue);
+        }
+    }
+
+    function removeQueueItem(index) {
+        if(!confirm("確定移除嗎？")) return;
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        let queue = [...remoteData[g][s]];
+        queue.splice(index, 1);
+        db.ref(`queues/${g}/${s}`).set(queue);
+    }
+
+    function addDesignerToQueue() {
+        const input = document.getElementById('new-designer-name');
+        const name = input.value.trim();
+        if(!name) return;
+        const g = document.getElementById('gender').value;
+        const s = document.getElementById('service').value;
+        let queue = remoteData[g][s] ? [...remoteData[g][s]] : [];
+        queue.push(name);
+        db.ref(`queues/${g}/${s}`).set(queue);
+        input.value = "";
+    }
+
+    // --- 統計與紀錄 (含新功能) ---
+
+    function openStatsPanel() {
+        switchView('stats');
+        switchStatsMode('counts'); 
+    }
+
+    function switchStatsMode(mode) {
+        document.getElementById('tab-counts').classList.toggle('active', mode === 'counts');
+        document.getElementById('tab-logs').classList.toggle('active', mode === 'logs');
+        document.getElementById('panel-counts').classList.toggle('hidden', mode !== 'counts');
+        document.getElementById('panel-logs').classList.toggle('hidden', mode !== 'logs');
+        renderStats();
+    }
+
+    function setFilter(period) {
+        currentStatsPeriod = period;
+        ['day','month','year'].forEach(p => {
+            const el = document.getElementById('filter-'+p);
+            el.style.color = p === period ? 'var(--accent)' : '#C7C7CC';
+            el.style.borderColor = p === period ? '#E5E5EA' : 'transparent';
+        });
+        renderStats();
+    }
+
+    function checkPeriodMatch(recDate) {
+        const now = new Date();
+        if (currentStatsPeriod === 'day') return recDate.toDateString() === now.toDateString();
+        else if (currentStatsPeriod === 'month') return (recDate.getMonth() === now.getMonth() && recDate.getFullYear() === now.getFullYear());
+        else if (currentStatsPeriod === 'year') return recDate.getFullYear() === now.getFullYear();
+        return false;
+    }
+
+    function renderStats() {
+        if(!statsData) return;
+        const counts = {};
+        const logs = [];
+
+        Object.keys(statsData).sort().reverse().forEach(key => {
+            const record = statsData[key];
+            const recDate = new Date(parseInt(key));
+            
+            if (checkPeriodMatch(recDate)) {
+                const name = record.name;
+                if (!counts[name]) counts[name] = { book: 0, skip: 0 };
+                if (record.action === 'BOOK') counts[name].book++;
+                else counts[name].skip++;
+            }
+
+            if(logs.length < 50) {
+                const y = recDate.getFullYear();
+                const m = (recDate.getMonth()+1).toString().padStart(2,'0');
+                const d = recDate.getDate().toString().padStart(2,'0');
+                const hh = recDate.getHours().toString().padStart(2,'0');
+                const mm = recDate.getMinutes().toString().padStart(2,'0');
+                const timeStr = `${y}/${m}/${d} ${hh}:${mm}`;
+                
+                const actionText = record.action === 'BOOK' ? '預約' : '跳過';
+                logs.push({ key: key, ...record, timeStr, actionText });
+            }
+        });
+
+        // 渲染統計表 (新增按鈕)
+        const sorted = Object.keys(counts).map(n => ({ name: n, ...counts[n] })).sort((a,b)=>(b.book+b.skip)-(a.book+a.skip));
+        document.getElementById('stats-body').innerHTML = sorted.length ? sorted.map(i => `
+            <tr>
+                <td>${i.name}</td>
+                <td style="text-align:center;">${i.book > 0 ? `<span class="badge book">${i.book}</span>` : '-'}</td>
+                <td style="text-align:center;">${i.skip > 0 ? `<span class="badge skip">${i.skip}</span>` : '-'}</td>
+                <td style="text-align:center;">
+                    <button class="log-edit-btn" onclick="openStatsEdit('${i.name}', ${i.book}, ${i.skip})">✎</button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="4" style="text-align:center;padding:20px;color:#ccc;">目前無資料</td></tr>';
+
+        // 渲染詳細紀錄
+        document.getElementById('log-list-body').innerHTML = logs.length ? logs.map(l => `
+            <li class="log-row">
+                <div style="flex:1;">
+                    <span class="log-time">${l.timeStr}</span>
+                    <span class="log-name">${l.name}</span>
+                </div>
+                <div style="display:flex; align-items:center;">
+                    <div class="log-action" style="color: ${l.action==='BOOK'?'var(--green)':'var(--red)'}">${l.actionText}</div>
+                    <button class="log-edit-btn" onclick="initEditLog('${l.key}')">✎</button>
+                </div>
+            </li>
+        `).join('') : '<div style="text-align:center;padding:20px;color:#ccc;">尚無紀錄</div>';
+    }
+
+    // --- 詳細紀錄編輯 (Log Level) ---
+
+    function initEditLog(key) {
+        if(!checkAdmin()) return;
+        const record = statsData[key];
+        if(!record) return;
+        currentEditKey = key;
+        document.getElementById('edit-log-name').value = record.name;
+        document.getElementById('edit-log-action').value = record.action;
+        document.getElementById('edit-log-modal').classList.remove('hidden');
+    }
+
+    function closeEditLogModal() {
+        document.getElementById('edit-log-modal').classList.add('hidden');
+        currentEditKey = null;
+    }
+
+    function saveLogEdit() {
+        if(!currentEditKey) return;
+        if(!confirm("⚠️【嚴重警告】\n\n您即將修改歷史數據！\n這將直接影響報表統計結果。\n\n確定要執行變更嗎？")) return;
+
+        const newName = document.getElementById('edit-log-name').value.trim();
+        const newAction = document.getElementById('edit-log-action').value;
+        if(!newName) { alert("名稱不能為空"); return; }
+
+        const updates = {};
+        updates[`history/${currentEditKey}/name`] = newName;
+        updates[`history/${currentEditKey}/action`] = newAction;
+        updates[`history/${currentEditKey}/_edited`] = Date.now();
+
+        db.ref().update(updates).then(() => {
+            alert("✅ 數據修正完成");
+            closeEditLogModal();
+        });
+    }
+
+    // --- 次數統計編輯 (Stats Level) ---
+
+    function openStatsEdit(name, book, skip) {
+        if(!checkAdmin()) return;
+        currentEditStatsName = name;
+        currentEditStatsOldBook = book;
+        currentEditStatsOldSkip = skip;
+        
+        document.getElementById('edit-stats-name').innerText = name;
+        document.getElementById('edit-stats-book').value = book;
+        document.getElementById('edit-stats-skip').value = skip;
+        document.getElementById('edit-stats-modal').classList.remove('hidden');
+    }
+
+    function closeStatsEditModal() {
+        document.getElementById('edit-stats-modal').classList.add('hidden');
+        currentEditStatsName = null;
+    }
+
+    function saveStatsEdit() {
+        if(!currentEditStatsName) return;
+        const newBook = parseInt(document.getElementById('edit-stats-book').value) || 0;
+        const newSkip = parseInt(document.getElementById('edit-stats-skip').value) || 0;
+        
+        const deltaBook = newBook - currentEditStatsOldBook;
+        const deltaSkip = newSkip - currentEditStatsOldSkip;
+
+        if(deltaBook === 0 && deltaSkip === 0) {
+            closeStatsEditModal();
+            return;
+        }
+
+        if(!confirm(`⚠️ 確認變更統計數值？\n\n${currentEditStatsName}\n預約: ${currentEditStatsOldBook} ➔ ${newBook}\n跳過: ${currentEditStatsOldSkip} ➔ ${newSkip}\n\n系統將自動增刪紀錄以符合此數值。`)) return;
+
+        const updates = {};
+        const now = Date.now();
+        const name = currentEditStatsName;
+
+        // 處理預約 (Book)
+        processDelta(name, 'BOOK', deltaBook, updates);
+        
+        // 處理跳過 (Skip)
+        processDelta(name, 'SKIP', deltaSkip, updates);
+
+        db.ref().update(updates).then(() => {
+            alert("✅ 統計數值已更新");
+            closeStatsEditModal();
+        }).catch(err => alert("Error: " + err));
+    }
+
+    function processDelta(name, action, delta, updates) {
+        if(delta > 0) {
+            // 增加：新增紀錄
+            for(let i=0; i<delta; i++) {
+                const newKey = db.ref('history').push().key;
+                // 加一點微小時間差避免 key 碰撞
+                updates[`history/${newKey}`] = {
+                    name: name,
+                    action: action,
+                    date: new Date().toISOString(),
+                    _manual_add: true
+                };
+            }
+        } else if (delta < 0) {
+            // 減少：刪除最新的紀錄 (需符合篩選條件)
+            let keysToDelete = [];
+            // 找出所有符合條件的 key
+            const candidates = Object.keys(statsData).filter(k => {
+                const r = statsData[k];
+                return r.name === name && r.action === action && checkPeriodMatch(new Date(parseInt(k)));
+            }).sort().reverse(); // 從最新的開始刪
+
+            const countToRemove = Math.abs(delta);
+            for(let i=0; i<countToRemove; i++) {
+                if(candidates[i]) updates[`history/${candidates[i]}`] = null;
+            }
+        }
+    }
+
+    function checkAdmin() {
+        if(isAdminVerified) return true;
+        const pwd = prompt("🔒 此功能需要管理員權限，請輸入密碼：");
+        if(pwd === "1234") {
+            isAdminVerified = true;
+            return true;
+        } else {
+            alert("⛔ 密碼錯誤");
+            return false;
+        }
+    }
+
+    // --- 系統設定 ---
+
+    function openAdminPanel() {
+        if(!checkAdmin()) return;
+        renderInputs('female'); renderInputs('male');
+        switchView('settings');
+    }
+    
+    function renderInputs(type) {
+        const c = document.getElementById(`input-container-${type}`); c.innerHTML = '';
+        let list = (localStorage.getItem(`list_${type}`)||'').split(',').filter(x=>x);
+        if(!list.length) list=[''];
+        list.forEach(v => addInputRow(type,v));
+    }
+    function addInputRow(type, val='') {
+        const div = document.createElement('div');
+        div.style.cssText = "display:flex; margin-bottom:10px;";
+        div.innerHTML = `<input type="text" value="${val}" style="flex:1;padding:10px;border:1px solid #E5E5EA;border-radius:10px;outline:none;"><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#C7C7CC;font-size:18px;">&times;</button>`;
+        document.getElementById(`input-container-${type}`).appendChild(div);
+    }
+    function addInput(t) { addInputRow(t); }
+    function saveAndReset() {
+        const getV = (t) => Array.from(document.querySelectorAll(`#input-container-${t} input`)).map(i=>i.value.trim()).filter(x=>x);
+        const f=getV('female'), m=getV('male');
+        if(!f.length || !m.length) { alert("名單不能為空！"); return; }
+        localStorage.setItem('list_female', f.join(',')); localStorage.setItem('list_male', m.join(','));
+        db.ref('queues').set({ female: {wash:f,perm:f,dye:f,care:f}, male: {wash:m,perm:m,dye:m,care:m} }).then(()=>switchView('main'));
+    }
+
+    function switchView(v) {
+        ['main','edit','stats','settings'].forEach(id => document.getElementById('view-'+id).classList.add('hidden'));
+        document.getElementById('view-'+v).classList.remove('hidden');
+        document.querySelector('.footer-container').style.display = v==='main'?'block':'none';
+    }
+
+    init();
+</script>
+</body>
+</html>
